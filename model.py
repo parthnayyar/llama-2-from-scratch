@@ -21,11 +21,13 @@ def precompute_theta_pos_frequencies(head_dim: int, seq_len: int, device: str, t
 
 def apply_rotary_embeddings(x: torch.Tensor, freqs_complex: torch.Tensor, device: str) -> torch.Tensor:
     x_grouped = x.view(*x.shape[:-1], -1, 2) # (B, T, H, head_dim) -> (B, T, H, head_dim // 2, 2)
+    x_grouped = x_grouped.float()
     x_complex = torch.view_as_complex(x_grouped) # (B, T, H, head_dim // 2, 2) -> (B, T, H, head_dim // 2)
     freqs_complex = freqs_complex.unsqueeze(0).unsqueeze(2) # (T, head_dim // 2) -> (1, T, 1, head_dim // 2, 2)
     x_rotated = x_complex * freqs_complex # (B, T, H, head_dim // 2) * (1, T, 1, head_dim // 2) -> (B, T, H, head_dim // 2)
     x_real = torch.view_as_real(x_rotated) # (B, T, H, head_dim // 2) -> (B, T, H, head_dim // 2, 2)
-    x_out = x_real.view(*x.shape[:-1]) # (B, T, H, head_dim // 2, 2) -> (B, T, H, head_dim)
+    # x_out = x_real.view(*x.shape[-1]) # (B, T, H, head_dim // 2, 2) -> (B, T, H, head_dim)
+    x_out = x_real.view(*x.shape) # (B, T, H, head_dim // 2, 2) -> (B, T, H, head_dim)
     return x_out.type_as(x).to(device)
 
 def repeat_kv(x: torch.Tensor, n_rep: int) -> torch.Tensor:
@@ -125,7 +127,7 @@ class FeedForward(torch.nn.Module):
         super().__init__()
         hidden_dim = int(8*args.dim/3)
         if args.ffn_dim_multiplier is not None:
-            hidden_dim = args.ffn_dim_multiplier * args.dim
+            hidden_dim = int(args.ffn_dim_multiplier * hidden_dim)
         hidden_dim = args.multiple_of * ((hidden_dim + args.multiple_of - 1) // args.multiple_of) # make sure the hidden dimension is a multiple of args.multiple_of
 
         self.w1 = torch.nn.Linear(args.dim, hidden_dim, bias=False)
@@ -163,7 +165,6 @@ class Transformer(torch.nn.Module):
         super().__init__()
         assert args.vocab_size != -1, "vocab_size must be set"
         self.args: ModelArgs = args
-        
         self.tok_embeddings = torch.nn.Embedding(args.vocab_size, args.dim)
         self.layers = torch.nn.ModuleList([
             EncoderBlock(args) for _ in range(args.n_layers)
