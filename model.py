@@ -85,6 +85,10 @@ class SelfAttention(torch.nn.Module):
         self.cache_k: torch.Tensor = torch.zeros((args.max_batch_size, args.max_seq_len, self.n_kv_heads, self.head_dim))
         self.cache_v: torch.Tensor = torch.zeros((args.max_batch_size, args.max_seq_len, self.n_kv_heads, self.head_dim))
 
+    def empty_kv_cache(self) -> None:
+        self.cache_k.zero_()
+        self.cache_v.zero_()
+
     def forward(self, x: torch.Tensor, start_pos: int, freqs_complex: torch.Tensor) -> torch.Tensor:
         B, T, D = x.shape
         assert T == 1, "seq_len must be 1"
@@ -155,6 +159,9 @@ class EncoderBlock(torch.nn.Module):
         self.attention_norm: RMSNorm = RMSNorm(args.dim, eps=args.norm_eps)
         self.ffn_norm: RMSNorm = RMSNorm(args.dim, eps=args.norm_eps)
 
+    def empty_kv_cache(self) -> None:
+        self.attention.empty_kv_cache()
+
     def forward(self, x: torch.Tensor, start_pos: int, freqs_complex: torch.Tensor) -> torch.Tensor:
         h = x + self.attention(self.attention_norm(x), start_pos, freqs_complex) # (B, T, D) + (B, T, D) -> (B, T, D)
         out = h + self.feed_forward(self.ffn_norm(h))
@@ -178,6 +185,10 @@ class Transformer(torch.nn.Module):
             self.args.max_seq_len * 2, 
             device=self.args.device
         )
+
+    def empty_kv_cache(self) -> None:
+        for layer in self.layers:
+            layer.empty_kv_cache()
 
     def forward(self, tokens: torch.Tensor, start_pos: int) -> torch.Tensor:
         B, T = tokens.shape

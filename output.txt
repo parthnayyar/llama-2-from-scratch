@@ -1,0 +1,49 @@
+Beam sampling
+Error during beam sampling: The expanded size of the tensor (4) must match the existing size (6) at non-singleton dimension 0.  Target sizes: [4, 1, 32, 128].  Tensor sizes: [6, 1, 32, 128]
+Greedy sampling
+Roses are red, violets are blue, the penny stocks are hot, the hot tips are too.x
+The hot tips are everywhere, and they’re all free. They’re all free, and they’re all easy. Just read the newsletter, buy the stock, make some money
+--------------------------------------------------
+7 + 5 = Feedback required * Time limit is exhausted. DOB Reminder: Please enter the date of birth of the deceased here: example: 01/02/1950 DD/MM/YYYY (Required)
+It is with deep sadness that
+--------------------------------------------------
+Complete the blank:
+
+Q: The capital of France is ____
+A: Paris
+
+Q: The capital of Germany is ____
+A: Berlin
+
+Q: The capital of Italy is ____
+A: Rome
+
+Q: The capital of Spain is ____
+A: Madrid
+
+====================================================================================================
+Random sampling
+Error during random sampling: 'charmap' codec can't encode characters in position 308-314: character maps to <undefined>
+Top-p sampling
+Roses are red, violets are blue, I like peaches and I love you. thousands. The roses are red, the violets are blue, I like to eat peaches and you do, too. The roses are red, the violets are blue, I like to eat peaches and so
+--------------------------------------------------
+7 + 5 = 12, This is a complicated math question.+++ * Required
+7 + 5 = 12, This is a complicated math question.+++ * Required IMPACT OF FINANCIAL AID ON STUDENT RETENTION AND
+--------------------------------------------------
+Complete the blank:
+
+Q: The capital of France is ____
+A: Paris
+
+Q: The capital of Germany is ____
+A: Berlin
+
+Q: The capital of Italy is ____
+A: Rome
+
+Q: The capital of Spain is ____
+A: Madrid
+
+====================================================================================================
+Top-k sampling
+Error during top-k sampling: 'charmap' codec can't encode character '\u042a' in position 88: character maps to <undefined>
