@@ -1,49 +1,46 @@
-Beam sampling
-Error during beam sampling: The expanded size of the tensor (4) must match the existing size (6) at non-singleton dimension 0.  Target sizes: [4, 1, 32, 128].  Tensor sizes: [6, 1, 32, 128]
-Greedy sampling
-Roses are red, violets are blue, the penny stocks are hot, the hot tips are too.x
-The hot tips are everywhere, and they’re all free. They’re all free, and they’re all easy. Just read the newsletter, buy the stock, make some money
+Beam sampling:
+Roses are red, violets are blue, I'm a big fan of you, end. Rosespecially when you's around.
+I'm a big fan of you.
 --------------------------------------------------
-7 + 5 = Feedback required * Time limit is exhausted. DOB Reminder: Please enter the date of birth of the deceased here: example: 01/02/1950 DD/MM/YYYY (Required)
-It is with deep sadness that
+Once upon a time in a land far far away, there was a little girl who loved to read.
+She loved to read so much that she would read in the bath, in the car, in bed
 --------------------------------------------------
-Complete the blank:
-
-Q: The capital of France is ____
-A: Paris
-
-Q: The capital of Germany is ____
-A: Berlin
-
-Q: The capital of Italy is ____
-A: Rome
-
-Q: The capital of Spain is ____
-A: Madrid
-
+Hi, I'm a large language model and I'm here to help you with your writing.
+I'm here toy, but I'm here to help you with your writing.
+I
 ====================================================================================================
-Random sampling
-Error during random sampling: 'charmap' codec can't encode characters in position 308-314: character maps to <undefined>
-Top-p sampling
-Roses are red, violets are blue, I like peaches and I love you. thousands. The roses are red, the violets are blue, I like to eat peaches and you do, too. The roses are red, the violets are blue, I like to eat peaches and so
+Greedy sampling:
+Roses are red, violets are blue, hey listener! This week, we discuss Dookiedoom music with the legendary producer Newmatic! Watch our interview with Newmatic
 --------------------------------------------------
-7 + 5 = 12, This is a complicated math question.+++ * Required
-7 + 5 = 12, This is a complicated math question.+++ * Required IMPACT OF FINANCIAL AID ON STUDENT RETENTION AND
+Once upon a time in a land far far away, life was not what it is today.TXU trudged through by candle light all night before leaving his homeland in an ancient wooden treasure
 --------------------------------------------------
-Complete the blank:
-
-Q: The capital of France is ____
-A: Paris
-
-Q: The capital of Germany is ____
-A: Berlin
-
-Q: The capital of Italy is ____
-A: Rome
-
-Q: The capital of Spain is ____
-A: Madrid
-
+Hi, I'm a large language model and I'm here to write your data analysis report for you!
+ peuh oh to o o So what ever ha it you to.
+data_entry was
 ====================================================================================================
-Top-k sampling
-Error during top-k sampling: 'charmap' codec can't encode character '\u042a' in position 88: character maps to <undefined>
+Top-p sampling:
+Roses are red, violets are violet, this Friday, the 13th, is one I wrote in my datebook, and Iï¿½m ready to frolic!
+ presso
+--------------------------------------------------
+Once upon a time in a land far far away, I will fight a dragon. moi! Mai. Nice try. Only after we've filled this table with gallons of some or other yellow stuff
+--------------------------------------------------
+Hi, I'm a large language model and I've been trained on general-purpose pretrained datasets, textbooks, web articles, and blog posts.}, reportage type={style-ad
+====================================================================================================
+Top-k sampling:
+Roses are red, violets are blue, I love 80s music so send me an email!
+ In 2008, she became a reporter, then news anchor
+--------------------------------------------------
+Once upon a time in a land far far away (well in London but you get what I mean, right?), a young 20 something called Lauren was doing her Placement Semester. P
+--------------------------------------------------
+Hi, I'm a large language model and I've been trained on a vast amount of data to generate human-like speech. CBSE board 2021 class 12 Date sheet
+====================================================================================================
+Random sampling:
+Roses are red, violets are blue
+â€ƒRetour on March 4 Nadal plays Lasqueti Island island guide
+From L. A. Gindi
+When it comes to tennis
+--------------------------------------------------
+Once upon a time in a land far far away an Italian called Angelo lived in an English land and made many Terminator paintings like these â€¦nice try, ja dâ€™accord ? sopip
+--------------------------------------------------
+Hi, I'm a large language model and I'm here to help you write content more effectively.\\n\\nI can analyze the text you're currently working on and provide detailed feedback, suggestions
+====================================================================================================

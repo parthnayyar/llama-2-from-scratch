@@ -77,7 +77,8 @@ class LLaMA:
         prompt_lengths = [len(prompt) for prompt in prompt_tokens]
         # Make sure the batch size is not too large
         batch_size = len(prompt_tokens)
-        assert batch_size <= self.model_args.max_batch_size, f"batch size must be less than or equal to {self.model_args.max_batch_size}"
+        if strategy == "beam": assert batch_size*kwargs["k"] <= self.model_args.max_batch_size, f"batch size must be less than or equal to {self.model_args.max_batch_size}//{kwargs['k']} for beam search with k={kwargs['k']}"
+        else: assert batch_size <= self.model_args.max_batch_size, f"batch size must be less than or equal to {self.model_args.max_batch_size}"
         max_prompt_len = max(len(prompt) for prompt in prompt_tokens)
         # Make sure the prompt length is not larger than the maximum sequence length
         assert max_prompt_len <= self.model_args.max_seq_len, f"prompt length must be less than or equal to {self.model_args.max_seq_len}"
@@ -98,7 +99,7 @@ class LLaMA:
         if strategy == "beam":
             return self._beam(tokens, prompt_tokens_mask, prompt_lengths, max_gen_len, temperature, kwargs["k"])
 
-        cur_iterator = tqdm(range(1, total_len), desc=f"Generating tokens using {strategy}" + (f" with p={kwargs["p"]}" if strategy == "top_p" else f" with k={kwargs["k"]}" if strategy == "top_k" else ""))
+        cur_iterator = tqdm(range(1, total_len), desc=f"Generating tokens using {strategy} with {temperature=}" + (f", p={kwargs["p"]}" if strategy == "top_p" else f", k={kwargs["k"]}" if strategy == "top_k" else ""))
         for cur_pos in cur_iterator:
             with torch.no_grad():
                 logits = self.model(tokens[:, cur_pos-1:cur_pos], cur_pos)
@@ -148,7 +149,7 @@ class LLaMA:
         # Track whether each beam has reached EOS
         eos_reached = torch.zeros((batch_size, k), dtype=torch.bool, device=self.model_args.device)
 
-        for cur_pos in tqdm(range(1, total_len), desc=f"Generating tokens using beam search with {k=} beams"):
+        for cur_pos in tqdm(range(1, total_len), desc=f"Generating tokens using beam search with {temperature=}, {k=} beams"):
             # Get the logits for the next token
             with torch.no_grad():
                 # Input is the tokens up to cur_pos-1
@@ -224,7 +225,7 @@ class LLaMA:
                 eos_idx = tokens_list.index(self.tokenizer.eos_id)
                 tokens_list = tokens_list[:eos_idx]
             out_tokens.append(tokens_list)
-            out_text.append(self.tokenizers.decode(tokens_list))
+            out_text.append(self.tokenizer.decode(tokens_list))
 
         return out_tokens, out_text
         
@@ -254,48 +255,37 @@ if __name__ == "__main__":
 
     prompts = [
         "Roses are red, violets are",
-        "7 + 5 =",
-        """Complete the blank:
-
-Q: The capital of France is ____
-A: Paris
-
-Q: The capital of Germany is ____
-A: Berlin
-
-Q: The capital of Italy is ____
-A: Rome
-
-Q: The capital of Spain is ____
-A:"""
+        "Once upon a time in a land far far away",
+        "Hi, I'm a large language model and I"
     ]
-    beam_k = 2
     
     model = LLaMA.build_model(
         checkpoints_dir="Llama-2-7b/",
         tokenizer_path="Llama-2-7b/tokenizer.model",
         load_model=True,
         max_seq_len=1024,
-        max_batch_size=len(prompts)*beam_k, # beam search requires batch size to be at least len(prompts)*beam_k
+        max_batch_size=6, # beam search requires batch size to be at least len(prompts)*beam_k
         device=device
     )
 
-    max_new_tokens = 2
+    max_new_tokens = 32
+    temperature = 1.1
 
-    with open("output.txt", "w") as f:
+    with open("output.txt", "w", encoding="utf-8", errors="replace") as f:
         with redirect_stdout(f):
             try:
                 print("Beam sampling:")
-                out_tokens, out_texts = model.generate(prompts, max_gen_len=max_new_tokens, temperature=0.9, strategy="beam", k=beam_k)
+                out_tokens, out_texts = model.generate(prompts, max_gen_len=max_new_tokens, temperature=temperature, strategy="beam", k=2)
                 assert len(out_texts) == len(prompts), f"Expected {len(prompts)} outputs, got {len(out_tokens)}"
                 print(f"\n{'-'*50}\n".join(out_texts))
+                print("="*100)
             except Exception as e:
                 print(f"Error during beam sampling: {e}", file=sys.stderr)
                 print_exc()
 
             try:
                 print("Greedy sampling:")
-                out_tokens, out_texts = model.generate(prompts, max_gen_len=max_new_tokens, temperature=0.9, strategy="top_p", p=0.9)
+                out_tokens, out_texts = model.generate(prompts, max_gen_len=max_new_tokens, temperature=temperature, strategy="top_p", p=0.9)
                 assert len(out_texts) == len(prompts), f"Expected {len(prompts)} outputs, got {len(out_tokens)}"
                 print(f"\n{'-'*50}\n".join(out_texts))
                 print("="*100)
@@ -304,18 +294,8 @@ A:"""
                 print_exc()
 
             try:
-                print("Random sampling:")
-                out_tokens, out_texts = model.generate(prompts, max_gen_len=max_new_tokens, temperature=0.9, strategy="random")
-                assert len(out_texts) == len(prompts), f"Expected {len(prompts)} outputs, got {len(out_tokens)}"
-                print(f"\n{'-'*50}\n".join(out_texts))
-                print("="*100)
-            except Exception as e:
-                print(f"Error during random sampling: {e}", file=sys.stderr)
-                print_exc()
-
-            try:
                 print("Top-p sampling:")
-                out_tokens, out_texts = model.generate(prompts, max_gen_len=max_new_tokens, temperature=0.9, strategy="top_p", p=0.9)
+                out_tokens, out_texts = model.generate(prompts, max_gen_len=max_new_tokens, temperature=temperature, strategy="top_p", p=0.9)
                 assert len(out_texts) == len(prompts), f"Expected {len(prompts)} outputs, got {len(out_tokens)}"
                 print(f"\n{'-'*50}\n".join(out_texts))
                 print("="*100)
@@ -325,10 +305,20 @@ A:"""
 
             try:
                 print("Top-k sampling:")
-                out_tokens, out_texts = model.generate(prompts, max_gen_len=max_new_tokens, temperature=0.9, strategy="top_k", k=50)
+                out_tokens, out_texts = model.generate(prompts, max_gen_len=max_new_tokens, temperature=temperature, strategy="top_k", k=50)
                 assert len(out_texts) == len(prompts), f"Expected {len(prompts)} outputs, got {len(out_tokens)}"
                 print(f"\n{'-'*50}\n".join(out_texts))
                 print("="*100)
             except Exception as e:
                 print(f"Error during top-k sampling: {e}", file=sys.stderr)
+                print_exc()
+
+            try:
+                print("Random sampling:")
+                out_tokens, out_texts = model.generate(prompts, max_gen_len=max_new_tokens, temperature=temperature, strategy="random")
+                assert len(out_texts) == len(prompts), f"Expected {len(prompts)} outputs, got {len(out_tokens)}"
+                print(f"\n{'-'*50}\n".join(out_texts))
+                print("="*100)
+            except Exception as e:
+                print(f"Error during random sampling: {e}", file=sys.stderr)
                 print_exc()
