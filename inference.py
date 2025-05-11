@@ -69,7 +69,7 @@ class LLaMA:
         elif strategy == "top_p": assert 0 < kwargs["p"] < 1, "Top-p sampling requires 0 < p < 1"
         elif strategy == "top_k": assert kwargs["k"] > 1, "Top-k sampling requires k > 1"
 
-        assert temperature > 0, f"Temperature must be greater than 0, got {temperature}"
+        assert temperature >= 0, f"Temperature must be >= 0, got {temperature}"
         if max_gen_len is None:
             max_gen_len = self.model_args.max_seq_len - 1
         # Convert each prompt into tokens
@@ -103,11 +103,14 @@ class LLaMA:
         for cur_pos in cur_iterator:
             with torch.no_grad():
                 logits = self.model(tokens[:, cur_pos-1:cur_pos], cur_pos)
-            probs = torch.softmax(logits[:, -1] / temperature, dim=-1)
-            if strategy == "top_p":
-                next_token = self._sample_top_p(probs, kwargs["p"])
-            elif strategy == "greedy":
+                logits = logits[:, -1]
+            if temperature > 0:
+                logits /= temperature
+            probs = torch.softmax(logits, dim=-1)
+            if temperature == 0 or strategy == "greedy":
                 next_token = torch.argmax(probs, dim=-1)
+            elif strategy == "top_p":
+                next_token = self._sample_top_p(probs, kwargs["p"])
             elif strategy == "random":
                 next_token = torch.multinomial(probs, num_samples=1)
             else:
@@ -154,9 +157,11 @@ class LLaMA:
             with torch.no_grad():
                 # Input is the tokens up to cur_pos-1
                 logits = self.model(expanded_tokens[:, cur_pos-1:cur_pos], cur_pos)
+                logits = logits[:, -1]
 
             # Apply temperature to logits
-            logits = logits[:, -1] / temperature
+            if temperature > 0:
+                logits /= temperature
             # use log probs instead of probs for numerical stability and to avoid underflow
             log_probs = torch.log_softmax(logits, dim=-1)  # (batch_size * k, vocab_size)
 
