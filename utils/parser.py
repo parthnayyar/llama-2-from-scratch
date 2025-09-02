@@ -1,4 +1,4 @@
-from lark import Lark
+from lark import Lark, Token
 from lark.parsers.lalr_interactive_parser import InteractiveParser
 from lark.exceptions import UnexpectedCharacters, UnexpectedToken
 from lark.lexer import PatternStr
@@ -31,20 +31,20 @@ class GrammarConstrainedParser:
     with special handling for LLM tokenization mismatches."""
     
     def __init__(self, grammar: str, llm_tokenizer: SentencePieceProcessor):
-        self.parser: Lark = Lark(grammar, parser="lalr", lexer="basic")
-        self.interactive: InteractiveParser = self.parser.parse_interactive("")
-        self.llm_tokenizer: SentencePieceProcessor = llm_tokenizer
-        self.llm_tokenizer_vocab_size: int = llm_tokenizer.vocab_size()
-        self.is_complete: bool = "$END" in self.interactive.accepts()
-        self.parsed_str: str = ""
+        self.parser: Lark = Lark(grammar, parser="lalr", lexer="basic") # Lark parser class
+        self.interactive: InteractiveParser = self.parser.parse_interactive("") # interactive parser
+        self.llm_tokenizer: SentencePieceProcessor = llm_tokenizer # tokenizer
+        self.llm_tokenizer_vocab_size: int = llm_tokenizer.vocab_size() # tokenizer vocab size
+        self.is_complete: bool = "$END" in self.interactive.accepts() # is the current parser state complete
+        self.parsed_str: str = "" # parsed string so far
         
         # Track partial tokens being built
         self.current_token_types: set[str] = set() # non-empty only for STR, INT, FLOAT, or uppercase token types created by lark for any literals
-        self.current_token_value: str = ""
+        self.current_token_value: str = "" # value of current partial token
 
     def _match_regex_prefix(self, prefix_string: str, regex_pattern: str) -> bool:
         """"Return True if `prefix_string` can be a prefix of any string that matches `regex_pattern`."""
-        if regex_pattern[0] != '^':
+        if regex_pattern.startswith('^'):
             regex_pattern = "^" + regex_pattern
         pattern: Pattern = re_compile(regex_pattern)
         return bool(pattern.fullmatch(prefix_string, partial=True))
@@ -53,7 +53,7 @@ class GrammarConstrainedParser:
     def get_acceptable_llm_tokens(self) -> Tensor:
         """Check if the current parser state can accept this token."""
         
-        acceptable_llm_tokens: list[int] = []
+        acceptable_llm_tokens: set[int] = set()
 
         if not self.current_token_types: # not currently accepting any partial tokens
             for id in range(self.llm_tokenizer_vocab_size): # for each llm token
@@ -72,7 +72,7 @@ class GrammarConstrainedParser:
                         for acceptable_token_type in acceptable_token_types:
                             last_token_regex_pattern: PatternStr = self.parser._terminals_dict[acceptable_token_type].pattern
                             if self._match_regex_prefix(llm_token[len(llm_token)-i:], last_token_regex_pattern.to_regexp()): # try to match the rest of the llm token as a prefix of any string that matches the regex pattern
-                                acceptable_llm_tokens.append(id) # add llm token if everything passes
+                                acceptable_llm_tokens.add(id) # add llm token if everything passes
                                 added = True
                                 break
                     except UnexpectedCharacters:
@@ -106,7 +106,7 @@ class GrammarConstrainedParser:
                         for acceptable_token_type in acceptable_token_types:
                             last_token_regex_pattern: PatternStr = self.parser._terminals_dict[acceptable_token_type].pattern
                             if self._match_regex_prefix(concatenated[len(concatenated)-i:], last_token_regex_pattern.to_regexp()): # try to match the rest of the llm token as a prefix of any string that matches the regex pattern
-                                acceptable_llm_tokens.append(id) # add llm token if everything passes
+                                acceptable_llm_tokens.add(id) # add llm token if everything passes
                                 added = True
                                 break
                     except UnexpectedCharacters:
@@ -119,10 +119,16 @@ class GrammarConstrainedParser:
                     if added:
                         break
 
-        return tensor(acceptable_llm_tokens, dtype=int).view(-1)
+        if self.is_complete:
+            acceptable_llm_tokens.add(self.llm_tokenizer.eos_id())
+
+        return tensor(list(acceptable_llm_tokens), dtype=int).view(-1)
     
-    def accept_token(self, token_id: int) -> None:
-        """Accept a token provided its id."""
+    def accept_token(self, token_id: int) -> bool:
+        """Accept a token provided its id. Returns True if the parser is complete."""
+        if token_id == self.llm_tokenizer.eos_id():
+            self.interactive.feed_token(Token("$END", ""))
+            return True
         llm_token: str = self.llm_tokenizer.Decode(token_id) # decode the llm token
         accepted: bool = False
         if not self.current_token_types: # not currently accepting any partial tokens
@@ -140,21 +146,20 @@ class GrammarConstrainedParser:
                         if self._match_regex_prefix(llm_token[len(llm_token)-i:], last_token_regex_pattern.to_regexp()): # try to match the rest of the llm token as a prefix of any string that matches the regex pattern
                             if not accepted:
                                 self.interactive = interactive_copy
+                                self.is_complete = "$END" in self.interactive.accepts()
                                 self.parsed_str += llm_token
                                 accepted = True
                             if i == 0:
                                 # reset current token types and value as full llm token was accepted
                                 self.current_token_types = set()
                                 self.current_token_value = ""
-                                self.is_complete: bool = "$END" in self.interactive.accepts()
-                                return
+                                return False
                             # add acceptable_token_type to current token types and update current token value
                             self.current_token_types.add(acceptable_token_type)
                             self.current_token_value = llm_token[len(llm_token)-i:]
 
                     if accepted:
-                        self.is_complete: bool = "$END" in self.interactive.accepts()
-                        return
+                        return False
                 except UnexpectedCharacters:
                     pass
                 except UnexpectedToken:
@@ -181,19 +186,20 @@ class GrammarConstrainedParser:
                         if self._match_regex_prefix(concatenated[len(concatenated)-i:], last_token_regex_pattern.to_regexp()): # try to match the rest of the llm token as a prefix of any string that matches the regex pattern
                             if not accepted:
                                 self.interactive = interactive_copy
+                                self.is_complete = "$END" in self.interactive.accepts()
                                 self.current_token_types = set() # reset current token types after first accept
                                 self.parsed_str += llm_token
                                 accepted = True
                             if i == 0:
                                 # reset current token types and value as full llm token was accepted
                                 self.current_token_value = ""
-                                return
+                                return False
                             # add acceptable_token_type to current token types and update current token value
                             self.current_token_types.add(acceptable_token_type)
                             self.current_token_value = concatenated[len(concatenated)-i:]
 
                     if accepted:
-                        return
+                        return False
                 except UnexpectedCharacters:
                     pass
                 except UnexpectedToken:
