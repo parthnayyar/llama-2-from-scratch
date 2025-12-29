@@ -51,18 +51,18 @@ def build_guide(model_cls: Type[BaseModel], tok) -> Guide:
     Turn a Pydantic class into a token-level FSM Guide that knows
     exactly which token ids are valid next.
     """
-    # ①  JSON-schema straight from Pydantic
+    # JSON-schema straight from Pydantic
     schema_dict = model_cls.model_json_schema()
 
-    # ②  JSON-schema ➜ regex string (guaranteed equivalent)  
+    # JSON-schema ➜ regex string (guaranteed equivalent)  
     regex = build_regex_from_schema(json.dumps(schema_dict))
-    #     Outlines converts that regex to a DFA under the hood.:contentReference[oaicite:1]{index=1}
+    # Outlines converts that regex to a DFA under the hood.
 
-    # ③  Build a token-aware index so we can ask “what ids are legal now?”
+    # Build a token-aware index so we can ask “what ids are legal now?”
     vocab = LlamaVocabulary.from_llama_tokenizer(tok)
     index = Index(regex, vocab)
 
-    # ④  Guide = FSM + cursor.
+    # Guide = FSM + cursor.
     return Guide(index)
 
 if __name__ == "__main__":
